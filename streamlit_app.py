@@ -1,31 +1,41 @@
 import streamlit as st
-import numpy as np
 import tensorflow as tf
-from PIL import Image, ImageOps
+import numpy as np
+from PIL import Image
+from streamlit_drawable_canvas import st_canvas
 
-# Load model
+# Load your trained MNIST model
 model = tf.keras.models.load_model("mnist_cnn_model.h5")
 
-st.title("🧠 MNIST Digit Classifier")
-st.write("Upload a 28x28 image of a digit (0-9) in grayscale.")
+st.title("🖌️ Draw a Digit - MNIST Classifier")
+st.write("Draw a digit (0–9) below and I’ll try to guess it!")
 
-# Upload image
-uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
+# Canvas component for drawing
+canvas_result = st_canvas(
+    fill_color="black",  # Background fill color
+    stroke_width=12,
+    stroke_color="white",
+    background_color="black",
+    width=280,
+    height=280,
+    drawing_mode="freedraw",
+    key="canvas",
+)
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file).convert("L")  # Convert to grayscale
-    image = ImageOps.invert(image)  # Invert colors if necessary
+if canvas_result.image_data is not None:
+    # Extract the drawing from canvas
+    img = Image.fromarray((canvas_result.image_data[:, :, 0]).astype("uint8"))  # Use red channel
+    img = img.resize((28, 28)).convert("L")  # Resize and convert to grayscale
 
-    st.image(image, caption="Uploaded Image", width=150)
+    # Show model input preview
+    st.image(img.resize((140, 140)), caption="🧐 Model Input Preview")
 
-    # Preprocess image
-    image = image.resize((28, 28))
-    img_array = np.array(image)
-    img_array = img_array / 255.0  # Normalize
+    # Preprocess for model
+    img_array = np.array(img).astype("float32") / 255.0
     img_array = img_array.reshape(1, 28, 28, 1)
 
-    # Predict
+    # Make prediction
     prediction = model.predict(img_array)
     predicted_digit = np.argmax(prediction)
 
-    st.markdown(f"### 🔢 Predicted Digit: `{predicted_digit}`")
+    st.success(f"✅ I think it's a **{predicted_digit}**.")
